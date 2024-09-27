@@ -1,0 +1,28 @@
+name: Fetch export files
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # Runs every 10 minutes
+  workflow_dispatch:  # Allows manual triggering of the workflow
+
+jobs:
+  fetch_files:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        
+      - name: Download export files
+        run: |
+          for i in $(seq 0 9); do
+            curl -o "export_$i.sql" "https://tahriver.online/export_$i.sql"
+          done
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "action@github.com"
+          git add export_*.sql
+          git commit -m "Update export files" || echo "No changes to commit"
+          git push
