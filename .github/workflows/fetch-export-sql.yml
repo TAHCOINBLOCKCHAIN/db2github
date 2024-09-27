@@ -19,10 +19,17 @@ jobs:
             curl -o "export_$i.sql" "https://tahriver.online/export_$i.sql"
           done
 
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      
       - name: Commit and push changes
         run: |
           git config --local user.name "github-actions"
           git config --local user.email "action@github.com"
           git add export_*.sql
           git commit -m "Update export files" || echo "No changes to commit"
-          git push
+          git push git@github.com:TAHCOINBLOCKCHAIN/db2github.git
