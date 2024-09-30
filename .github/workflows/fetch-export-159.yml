@@ -59,6 +59,6 @@ jobs:
         run: |
           git config --local user.name "github-actions"
           git config --local user.email "action@github.com"
-          git add "$CURRENT_DATE/"
+          git add "./$CURRENT_DATE/" # Use relative path for adding files
           git commit -m "Update export files for $CURRENT_DATE" || echo "No changes to commit"
           git push git@github.com:TAHCOINBLOCKCHAIN/db2github.git
