@@ -1,0 +1,62 @@
+name: Fetch export files
+
+on:
+  schedule:
+    - cron: '*/159 * * * *'  # Runs every 9 minutes
+  workflow_dispatch:  # Allows manual triggering of the workflow
+
+jobs:
+  fetch_files:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        
+      - name: Create directory with current date
+        run: |
+          CURRENT_DATE=$(date +'%Y-%m-%d')
+          mkdir -p "$CURRENT_DATE"
+
+      - name: Download export files
+        run: |
+          for i in $(seq 0 9); do
+            FILE_NAME="export_$i.sql"
+            URL="https://tahriver.online/$FILE_NAME"
+            OUTPUT_PATH="$CURRENT_DATE/$FILE_NAME"
+            
+            # Download the file only if it exists
+            if curl --output /dev/null --silent --head --fail "$URL"; then
+              # Check if the file already exists and its size
+              if [[ -f "$OUTPUT_PATH" ]]; then
+                EXISTING_SIZE=$(stat -c%s "$OUTPUT_PATH")
+                NEW_SIZE=$(curl -sI "$URL" | grep -i Content-Length | awk '{print $2}' | tr -d '\r')
+
+                # Only download if the new file is larger than the existing one
+                if (( NEW_SIZE > EXISTING_SIZE )); then
+                  curl -o "$OUTPUT_PATH" "$URL"
+                else
+                  echo "Skipping $FILE_NAME; existing file is larger or equal in size."
+                fi
+              else
+                curl -o "$OUTPUT_PATH" "$URL"
+              fi
+            else
+              echo "File $FILE_NAME not found at $URL."
+            fi
+          done
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "action@github.com"
+          git add "$CURRENT_DATE/"
+          git commit -m "Update export files for $CURRENT_DATE" || echo "No changes to commit"
+          git push git@github.com:TAHCOINBLOCKCHAIN/db2github.git
