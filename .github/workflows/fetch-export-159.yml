@@ -1,8 +1,8 @@
-name: Fetch export files
+name: Fetch export files 159
 
 on:
   schedule:
-    - cron: '*/159 * * * *'  # Runs every 9 minutes
+    - cron: '*/159 * * * *'  # Runs every 159 minutes
   workflow_dispatch:  # Allows manual triggering of the workflow
 
 jobs:
@@ -16,14 +16,16 @@ jobs:
       - name: Create directory with current date
         run: |
           CURRENT_DATE=$(date +'%Y-%m-%d')
-          mkdir -p "$CURRENT_DATE"
+          mkdir -p "$GITHUB_WORKSPACE/$CURRENT_DATE"
+          chmod 777 "$GITHUB_WORKSPACE/$CURRENT_DATE" # Ensure it's writable
 
       - name: Download export files
         run: |
+          CURRENT_DATE=$(date +'%Y-%m-%d')
           for i in $(seq 0 9); do
             FILE_NAME="export_$i.sql"
             URL="https://tahriver.online/$FILE_NAME"
-            OUTPUT_PATH="$CURRENT_DATE/$FILE_NAME"
+            OUTPUT_PATH="$GITHUB_WORKSPACE/$CURRENT_DATE/$FILE_NAME"
             
             # Download the file only if it exists
             if curl --output /dev/null --silent --head --fail "$URL"; then
