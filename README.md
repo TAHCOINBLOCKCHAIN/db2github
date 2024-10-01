@@ -13,7 +13,7 @@ Welcome to the Tahcoin Blockchain Database Repository! This repository contains 
 To get started, clone this repository and explore the database containing all blockchain blocks.
 
 ```bash
-git clone https://github.com/yourusername/tahcoin-blockchain-db.git
+git clone https://github.com/TAHCOINBLOCKCHAIN/db2github.git
 ```
 ## License
 
