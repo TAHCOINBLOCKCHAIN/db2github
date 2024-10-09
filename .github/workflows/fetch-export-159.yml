@@ -19,17 +19,16 @@ jobs:
           # Create the current year directory if it doesn't exist
           mkdir -p "$GITHUB_WORKSPACE/$CURRENT_YEAR"
 
-      - name: Move existing current date directory to current year directory
+      - name: Move existing directories from current year to current year directory
         run: |
-          CURRENT_DATE=$(date +'%Y-%m-%d')
-          if [ -d "$GITHUB_WORKSPACE/$CURRENT_YEAR/$CURRENT_DATE" ]; then
-            echo "Directory for today already exists."
-          elif [ -d "$GITHUB_WORKSPACE/$CURRENT_DATE" ]; then
-            mv "$GITHUB_WORKSPACE/$CURRENT_DATE" "$GITHUB_WORKSPACE/$CURRENT_YEAR/"
-            echo "Moved directory $CURRENT_DATE to $CURRENT_YEAR."
-          else
-            echo "No existing directory found for the current date: $CURRENT_DATE."
-          fi
+          CURRENT_YEAR=$(date +'%Y')
+          # Move all directories created in the current year to the current year directory
+          for dir in $(ls -d "$GITHUB_WORKSPACE/"[0-9]*); do
+            if [[ $(basename "$dir") =~ ^$CURRENT_YEAR ]]; then
+              mv "$dir" "$GITHUB_WORKSPACE/$CURRENT_YEAR/"
+              echo "Moved directory $(basename "$dir") to $CURRENT_YEAR."
+            fi
+          done
 
       - name: Create current date directory inside year directory
         run: |
