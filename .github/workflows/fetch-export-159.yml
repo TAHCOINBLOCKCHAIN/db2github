@@ -24,8 +24,13 @@ jobs:
           # Move all directories created in the current year to the current year directory
           for dir in $GITHUB_WORKSPACE/*; do
             if [[ -d "$dir" && $(basename "$dir") =~ ^$CURRENT_YEAR-[0-9]{2}-[0-9]{2}$ ]]; then
-              mv "$dir" "$GITHUB_WORKSPACE/$CURRENT_YEAR/"
-              echo "Moved directory $(basename "$dir") to $CURRENT_YEAR."
+              TARGET_DIR="$GITHUB_WORKSPACE/$CURRENT_YEAR/$(basename "$dir")"
+              if [[ ! -d "$TARGET_DIR" ]]; then
+                mv "$dir" "$GITHUB_WORKSPACE/$CURRENT_YEAR/"
+                echo "Moved directory $(basename "$dir") to $CURRENT_YEAR."
+              else
+                echo "Skipping $(basename "$dir"); target directory already exists."
+              fi
             fi
           done
 
