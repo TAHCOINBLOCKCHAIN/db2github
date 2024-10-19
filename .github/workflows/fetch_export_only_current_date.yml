@@ -1,0 +1,94 @@
+name: Fetch export files 9m TAH CDO
+
+on:
+  schedule:
+    - cron: '*/9 * * * *'  # Runs every 9 minutes
+  workflow_dispatch:
+
+jobs:
+  fetch_files:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        
+      - name: Create current year directory
+        run: |
+          CURRENT_YEAR=$(date +'%Y')
+          mkdir -p "$GITHUB_WORKSPACE/$CURRENT_YEAR"
+
+      - name: Clean up old directories and files
+        run: |
+          CURRENT_YEAR=$(date +'%Y')
+          CURRENT_DATE=$(date +'%Y-%m-%d')
+          
+          # Remove all directories except for the current date's directory
+          for dir in "$GITHUB_WORKSPACE/$CURRENT_YEAR/"*; do
+            if [[ -d "$dir" && $(basename "$dir") != "$CURRENT_DATE" ]]; then
+              rm -rf "$dir"
+              echo "Deleted directory $(basename "$dir")."
+            fi
+          done
+
+          # Remove all files inside the current year directory that are not in the current date's directory
+          find "$GITHUB_WORKSPACE/$CURRENT_YEAR/" -type f ! -path "$GITHUB_WORKSPACE/$CURRENT_YEAR/$CURRENT_DATE/*" -delete
+
+      - name: Create current date directory inside year directory
+        run: |
+          CURRENT_YEAR=$(date +'%Y')
+          CURRENT_DATE=$(date +'%Y-%m-%d')
+          mkdir -p "$GITHUB_WORKSPACE/$CURRENT_YEAR/$CURRENT_DATE"
+          chmod 777 "$GITHUB_WORKSPACE/$CURRENT_YEAR/$CURRENT_DATE"
+
+      - name: Install Git LFS
+        run: |
+          git lfs install
+          git lfs track "*.sql"
+          echo "*.sql filter=lfs diff=lfs merge=lfs -text" >> .gitattributes
+
+      - name: Download export files
+        run: |
+          CURRENT_YEAR=$(date +'%Y')
+          CURRENT_DATE=$(date +'%Y-%m-%d')
+          for i in $(seq 0 9); do
+            FILE_NAME="export_$i.sql"
+            URL="https://tahriver.online/$FILE_NAME"
+            OUTPUT_PATH="$GITHUB_WORKSPACE/$CURRENT_YEAR/$CURRENT_DATE/$FILE_NAME"
+            
+            if curl --output /dev/null --silent --head --fail "$URL"; then
+              if [[ -f "$OUTPUT_PATH" ]]; then
+                EXISTING_SIZE=$(stat -c%s "$OUTPUT_PATH")
+                NEW_SIZE=$(curl -sI "$URL" | grep -i Content-Length | awk '{print $2}' | tr -d '\r')
+
+                if (( NEW_SIZE > EXISTING_SIZE )); then
+                  curl -o "$OUTPUT_PATH" "$URL"
+                else
+                  echo "Skipping $FILE_NAME; existing file is larger or equal in size."
+                fi
+              else
+                curl -o "$OUTPUT_PATH" "$URL"
+              fi
+            else
+              echo "File $FILE_NAME not found at $URL."
+            fi
+          done
+
+      - name: Check for secrets
+        run: |
+          git diff --cached | grep -E 'your_secret_pattern' && exit 1 || echo "No secrets found."
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "action@github.com"
+          git add "./$CURRENT_YEAR/"
+          git commit -m "Update export files for $CURRENT_DATE" || echo "No changes to commit"
+          git push git@github.com:TAHCOINBLOCKCHAIN/db2github.git
